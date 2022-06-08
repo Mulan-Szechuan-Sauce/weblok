@@ -1,14 +1,14 @@
 #[allow(dead_code)]
 use weblock_codegen::*;
 
-const DIM: usize = 20;
+pub const DIM: usize = 20;
 
 pub struct GameState {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Board {
-    occupancies: [Occupancy; DIM * DIM],
+    pub occupancies: [Occupancy; DIM * DIM],
 }
 
 impl Board {
@@ -42,7 +42,7 @@ impl Board {
         true
     }
 
-    fn get(&self, x: u8, y: u8) -> Occupancy {
+    pub fn get(&self, x: u8, y: u8) -> Occupancy {
         self.occupancies[x as usize + y as usize * DIM]
     }
 
@@ -213,6 +213,8 @@ pub enum Rotation {
 }
 
 // https://en.wikipedia.org/wiki/Blokus#/media/File:Blokus_tiles.svg
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Piece {
     One,
     Two,
