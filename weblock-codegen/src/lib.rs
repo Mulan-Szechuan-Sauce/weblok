@@ -2,18 +2,6 @@ use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse::Parse, parse_macro_input, punctuated::Punctuated, token::Comma, Ident};
 
-// poop!(
-//     "XXX",
-//     " X "
-// )
-
-// poop!(
-//     XXX,
-//     _X_,
-// )
-
-// ,
-
 struct Arguments(Vec<Ident>);
 
 impl Parse for Arguments {
@@ -41,6 +29,20 @@ pub fn piece(input: TokenStream) -> TokenStream {
             s.chars().map(|c| if c == '_' { 0 } else { 1 }).collect()
         })
         .collect();
+
+    let expected_len = mask_zero
+        .iter()
+        .max_by_key(|row| row.len())
+        .unwrap_or(&vec![])
+        .len();
+    let is_valid = mask_zero
+        .iter()
+        .map(|row| row.len())
+        .rfold(true, |acc, it| acc && expected_len == it);
+
+    if !is_valid {
+        return make_error(&format!("Expected every row to be {} long", expected_len));
+    }
 
     let mask_ninety = rot_piece_90(&mask_zero);
     let mask_one_eighty = rot_piece_180(&mask_zero);
@@ -110,4 +112,8 @@ impl ToTokens for Coord {
             (#zero, #one)
         });
     }
+}
+
+fn make_error(message: &str) -> TokenStream {
+    TokenStream::from(quote!(compile_error!(#message)))
 }

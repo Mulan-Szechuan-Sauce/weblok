@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use weblock_codegen::*;
 
 const DIM: usize = 20;
@@ -23,147 +24,49 @@ impl Board {
         occupancy: Occupancy,
         piece: Piece,
         rot: Rotation,
-        row: usize,
-        col: usize,
+        col: u8,
+        row: u8,
     ) -> bool {
-        // Step 1: Create vec of new placements
-
-        /*
-        .....
-        .^G..
-        .GGG.
-        ..G..
-        ....G
-
-        .....
-        ..G..
-        ..G..
-        .....
-        .....
-        */
-
+        let coords = coords_for_placement(piece, rot, col, row);
+        for (x, y) in coords.iter() {
+            if *x as usize >= DIM || *y as usize >= DIM {
+                return false;
+            }
+            if self.get(*x, *y) != Occupancy::Empty {
+                return false;
+            }
+        }
+        for (x, y) in coords {
+            self.set(x, y, occupancy);
+        }
         true
     }
-}
 
-// poop!(
-//     "XX",
-// )
+    fn get(&self, x: u8, y: u8) -> Occupancy {
+        self.occupancies[x as usize + y as usize * DIM]
+    }
 
-// poop!(
-//     "XXX",
-//     " X "
-// )
-
-// poop!(
-//     XXX,
-//     _X_,
-// )
-
-
-macro_rules! gen_piece_placements {
-    ($col:expr, $row:expr, $rot:expr, $piece_map:expr) => {
-        match $rot {
-            Rotation::Zero => {
-                coords.push((col, row));
-                coords.push((col + 1, row));
-            },
-        }
+    fn set(&mut self, x: u8, y: u8, value: Occupancy) {
+        self.occupancies[x as usize + y as usize * DIM] = value;
     }
 }
 
-// Generates a symbol tokenizer match statemnt for ambiguous multi-char tokens
-// macro_rules! gen_piece_placements {
-//     ($col:expr, $row:expr, $rot:expr, $($extra:expr, $token:expr),*) => {
-//         if $context.offset >= $context.content.len() {
-//             Ok(($pos, $default))
-//         } else {
-//             let ch = unsafe {
-//                 *$context.content.get_unchecked($context.offset)
-//             };
-
-//             match ch as char {
-//                 $(
-//                     $extra => {
-//                         $context.offset += 1;
-//                         Ok(($pos, $token))
-//                     },
-//                 )*
-//                 _ => Ok(($pos, $default)),
-//             }
-//         }
-//     };
-// }
-
-fn rot_piece_map(
-    piece_map: Vec<Vec<u8>>,
-    rot: Rotation,
-) -> Vec<Vec<u8>> {
-    match rot {
-        Rotation::Zero       => piece_map,
-        Rotation::Ninety     => rot_piece_90(piece_map),
-        Rotation::OneEighty  => rot_piece_180(piece_map),
-        Rotation::TwoSeventy => rot_piece_90(rot_piece_180(piece_map)),
-    }
-}
-
-/// Requires all the strs to be the same length
-pub fn rot_piece_90(
-    piece_map: Vec<Vec<u8>>,
-) -> Vec<Vec<u8>> {
-    let col_count = piece_map[0].len();
-    let row_count = piece_map.len();
-    let mut output = vec![Vec::with_capacity(row_count); col_count];
-
-    for col in (0..col_count).rev() {
-        for row in piece_map.iter() {
-            output[col_count - 1 - col].push(row[col]);
-        }
-    }
-    output
-}
-
-type PieceMap<const LEN: usize> = [[u8; LEN]; LEN];
-
-pub const fn piece_map_width<const LEN: usize>(
-    piece_map: PieceMap<LEN>,
-) -> usize {
-    let mut max = 1;
-    let mut row = 0;
-    let mut col = 0;
-
-    while row < LEN {
-        while col < LEN {
-            if col + 1 > max && piece_map[row][col] == 1 {
-                max = col + 1;
+impl ToString for Board {
+    fn to_string(&self) -> String {
+        let mut s = String::with_capacity(DIM * (DIM + 1));
+        for i in 0..self.occupancies.len() {
+            if i > 0 && i % DIM == 0 {
+                s.push('\n');
             }
-            col += 1;
+            s.push_str(&self.occupancies[i].to_string());
         }
-        row += 1;
+        s
     }
-    max
-}
-
-pub fn rot_piece_180(
-    piece_map: Vec<Vec<u8>>,
-) -> Vec<Vec<u8>> {
-    piece_map.into_iter()
-        .map(|s| s.into_iter().rev().collect())
-        .rev()
-        .collect()
-}
-
-pub fn piece_map_to_string(
-    piece_map: Vec<Vec<u8>>,
-) -> String {
-    piece_map.iter()
-        .map(|row| row.iter().map(|t| t.to_string()).collect())
-        .collect::<Vec<String>>()
-        .join("\n")
 }
 
 /// row and col refer to the upper left corner of the piece bounding box
 /// So the row and col of a piece will relatively changed based on rotation
+/// @return (x,y)
 fn coords_for_placement(
     piece: Piece,
     rot: Rotation,
@@ -176,27 +79,107 @@ fn coords_for_placement(
             col, row, rot,
             XX
         ),
+        Piece::ThreeI => piece!(
+            col, row, rot,
+            XXX
+        ),
+        Piece::ThreeL => piece!(
+            col, row, rot,
+            XX,
+            X_
+        ),
+        Piece::FourI => piece!(
+            col, row, rot,
+            XXXX,
+        ),
+        Piece::FourL => piece!(
+            col, row, rot,
+            XXX,
+            X__,
+        ),
+        Piece::FourStairs => piece!(
+            col, row, rot,
+            XX_,
+            _XX,
+        ),
+        Piece::FourSquare => piece!(
+            col, row, rot,
+            XX,
+            XX,
+        ),
+        Piece::FourT => piece!(
+            col, row, rot,
+            XXX,
+            _X_,
+        ),
+        Piece::FiveF => piece!(
+            col, row, rot,
+            X__,
+            XXX,
+            _X_,
+        ),
+        Piece::FiveI => piece!(
+            col, row, rot,
+            XXXXX,
+        ),
+        Piece::FiveL => piece!(
+            col, row, rot,
+            XXXX,
+            X___,
+        ),
+        Piece::FiveN => piece!(
+            col, row, rot,
+            XXX_,
+            __XX,
+        ),
+        Piece::FiveP => piece!(
+            col, row, rot,
+            XXX,
+            _XX,
+        ),
+        Piece::FiveT => piece!(
+            col, row, rot,
+            XXX,
+            _X_,
+            _X_,
+        ),
+        Piece::FiveU => piece!(
+            col, row, rot,
+            XXX,
+            X_X,
+        ),
+        Piece::FiveV => piece!(
+            col, row, rot,
+            XXX,
+            X__,
+            X__,
+        ),
+        Piece::FiveW => piece!(
+            col, row, rot,
+            XX_,
+            _XX,
+            __X,
+        ),
+        Piece::FiveX => piece!(
+            col, row, rot,
+            _X_,
+            XXX,
+            _X_,
+        ),
+        Piece::FiveY => piece!(
+            col, row, rot,
+            _X,
+            XX,
+            _X,
+            _X,
+        ),
+        Piece::FiveZ => piece!(
+            col, row, rot,
+            XX_,
+            _X_,
+            _XX
+        ),
         _ => todo!()
-    }
-}
-
-impl ToString for Board {
-    fn to_string(&self) -> String {
-        let mut s = String::with_capacity(DIM * (DIM + 1));
-        for i in 0..self.occupancies.len() {
-            if i > 0 && i % DIM == 0 {
-                s.push('\n');
-            }
-
-            s.push(match self.occupancies[i] {
-                Occupancy::Empty  => '.',
-                Occupancy::Green  => 'G',
-                Occupancy::Red    => 'R',
-                Occupancy::Blue   => 'B',
-                Occupancy::Yellow => 'Y',
-            });
-        }
-        s
     }
 }
 
@@ -207,6 +190,18 @@ pub enum Occupancy {
     Red,
     Blue,
     Yellow,
+}
+
+impl ToString for Occupancy {
+    fn to_string(&self) -> String {
+        match self {
+            Occupancy::Empty  => "·",
+            Occupancy::Green  => "G",
+            Occupancy::Red    => "R",
+            Occupancy::Blue   => "B",
+            Occupancy::Yellow => "Y",
+        }.to_owned()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

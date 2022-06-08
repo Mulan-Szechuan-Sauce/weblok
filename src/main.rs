@@ -14,12 +14,9 @@ fn close_on_esc(
 }
 
 fn main() {
-    let board = Board::new();
+    let mut board = Board::new();
+    board.place(Occupancy::Green, Piece::FiveU, Rotation::TwoSeventy, 15, 0);
     println!("{}", board.to_string());
-    println!("{}", piece_map_to_string(rot_piece_180(vec!(
-        vec!(0, 1),
-        vec!(1, 1),
-    ))));
 
     // App::new()
     //     .insert_resource(WindowDescriptor {
