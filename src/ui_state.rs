@@ -1,5 +1,7 @@
 use std::mem::transmute;
 
+use bevy::prelude::Entity;
+
 use crate::game::{Piece, Occupancy};
 
 const PIECE_COUNT: u8 = std::mem::variant_count::<Piece>() as u8;
@@ -7,6 +9,7 @@ const PIECE_COUNT: u8 = std::mem::variant_count::<Piece>() as u8;
 pub struct UiState {
     pub selected_piece: Piece,
     pub selected_occupancy: Occupancy,
+    pub thing: Option<Entity>,
 }
 
 impl UiState {
@@ -14,6 +17,7 @@ impl UiState {
         Self {
             selected_piece: Piece::One,
             selected_occupancy: Occupancy::Green,
+            thing: None,
         }
     }
 
