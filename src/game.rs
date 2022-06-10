@@ -73,114 +73,7 @@ fn coords_for_placement(
     col: u8,
     row: u8,
 ) -> Vec<(u8, u8)> {
-    match piece {
-        Piece::One => vec!((col, row)),
-        Piece::Two => piece!(
-            col, row, rot,
-            XX
-        ),
-        Piece::ThreeI => piece!(
-            col, row, rot,
-            XXX
-        ),
-        Piece::ThreeL => piece!(
-            col, row, rot,
-            XX,
-            X_
-        ),
-        Piece::FourI => piece!(
-            col, row, rot,
-            XXXX,
-        ),
-        Piece::FourL => piece!(
-            col, row, rot,
-            XXX,
-            X__,
-        ),
-        Piece::FourStairs => piece!(
-            col, row, rot,
-            XX_,
-            _XX,
-        ),
-        Piece::FourSquare => piece!(
-            col, row, rot,
-            XX,
-            XX,
-        ),
-        Piece::FourT => piece!(
-            col, row, rot,
-            XXX,
-            _X_,
-        ),
-        Piece::FiveF => piece!(
-            col, row, rot,
-            X__,
-            XXX,
-            _X_,
-        ),
-        Piece::FiveI => piece!(
-            col, row, rot,
-            XXXXX,
-        ),
-        Piece::FiveL => piece!(
-            col, row, rot,
-            XXXX,
-            X___,
-        ),
-        Piece::FiveN => piece!(
-            col, row, rot,
-            XXX_,
-            __XX,
-        ),
-        Piece::FiveP => piece!(
-            col, row, rot,
-            XXX,
-            _XX,
-        ),
-        Piece::FiveT => piece!(
-            col, row, rot,
-            XXX,
-            _X_,
-            _X_,
-        ),
-        Piece::FiveU => piece!(
-            col, row, rot,
-            XXX,
-            X_X,
-        ),
-        Piece::FiveV => piece!(
-            col, row, rot,
-            XXX,
-            X__,
-            X__,
-        ),
-        Piece::FiveW => piece!(
-            col, row, rot,
-            XX_,
-            _XX,
-            __X,
-        ),
-        Piece::FiveX => piece!(
-            col, row, rot,
-            _X_,
-            XXX,
-            _X_,
-        ),
-        Piece::FiveY => piece!(
-            col, row, rot,
-            _X,
-            XX,
-            _X,
-            _X,
-        ),
-        Piece::FiveZ => piece!(
-            col, row, rot,
-            XX_,
-            _X_,
-            _XX
-        ),
-        _ => todo!()
-    }
+    piece.offsets(rot).iter().map(|(x, y)| (col + x, row + y)).collect()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -237,6 +130,120 @@ pub enum Piece {
     FiveX,
     FiveY,
     FiveZ,
+}
+
+impl Piece {
+    /// @return (x,y)
+    pub fn offsets(&self, rot: Rotation) -> Vec<(u8, u8)> {
+        match self {
+            Piece::One => vec!((0, 0)),
+            Piece::Two => piece!(
+                rot,
+                XX
+            ),
+            Piece::ThreeI => piece!(
+                rot,
+                XXX
+            ),
+            Piece::ThreeL => piece!(
+                rot,
+                XX,
+                X_
+            ),
+            Piece::FourI => piece!(
+                rot,
+                XXXX,
+            ),
+            Piece::FourL => piece!(
+                rot,
+                XXX,
+                X__,
+            ),
+            Piece::FourStairs => piece!(
+                rot,
+                XX_,
+                _XX,
+            ),
+            Piece::FourSquare => piece!(
+                rot,
+                XX,
+                XX,
+            ),
+            Piece::FourT => piece!(
+                rot,
+                XXX,
+                _X_,
+            ),
+            Piece::FiveF => piece!(
+                rot,
+                X__,
+                XXX,
+                _X_,
+            ),
+            Piece::FiveI => piece!(
+                rot,
+                XXXXX,
+            ),
+            Piece::FiveL => piece!(
+                rot,
+                XXXX,
+                X___,
+            ),
+            Piece::FiveN => piece!(
+                rot,
+                XXX_,
+                __XX,
+            ),
+            Piece::FiveP => piece!(
+                rot,
+                XXX,
+                _XX,
+            ),
+            Piece::FiveT => piece!(
+                rot,
+                XXX,
+                _X_,
+                _X_,
+            ),
+            Piece::FiveU => piece!(
+                rot,
+                XXX,
+                X_X,
+            ),
+            Piece::FiveV => piece!(
+                rot,
+                XXX,
+                X__,
+                X__,
+            ),
+            Piece::FiveW => piece!(
+                rot,
+                XX_,
+                _XX,
+                __X,
+            ),
+            Piece::FiveX => piece!(
+                rot,
+                _X_,
+                XXX,
+                _X_,
+            ),
+            Piece::FiveY => piece!(
+                rot,
+                _X,
+                XX,
+                _X,
+                _X,
+            ),
+            Piece::FiveZ => piece!(
+                rot,
+                XX_,
+                _X_,
+                _XX
+            ),
+            _ => todo!()
+        }
+    }
 }
 
 

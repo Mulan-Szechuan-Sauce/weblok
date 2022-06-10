@@ -17,11 +17,9 @@ impl Parse for Arguments {
 pub fn piece(input: TokenStream) -> TokenStream {
     let Arguments(args_parsed) = parse_macro_input!(input as Arguments);
 
-    let col = &args_parsed[0];
-    let row = &args_parsed[1];
-    let rot = &args_parsed[2];
+    let rot = &args_parsed[0];
 
-    let mask_zero: Vec<Vec<u8>> = args_parsed[3..]
+    let mask_zero: Vec<Vec<u8>> = args_parsed[1..]
         .iter()
         .map(|id| {
             let s = id.to_string();
@@ -60,7 +58,7 @@ pub fn piece(input: TokenStream) -> TokenStream {
             Rotation::Ninety     => vec![#(#coords_ninety,)*],
             Rotation::OneEighty  => vec![#(#coords_one_eighty,)*],
             Rotation::TwoSeventy => vec![#(#coords_two_seventy,)*],
-        }.iter().map(|(x, y)| (#col + x, #row + y)).collect()
+        }
     };
 
     TokenStream::from(expanded)
