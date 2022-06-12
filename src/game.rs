@@ -1,10 +1,8 @@
+use bevy::prelude::Color;
 #[allow(dead_code)]
 use weblock_codegen::*;
 
 pub const DIM: usize = 20;
-
-pub struct GameState {
-}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Board {
@@ -24,8 +22,8 @@ impl Board {
         occupancy: Occupancy,
         piece: Piece,
         rot: Rotation,
-        col: u8,
-        row: u8,
+        col: i8,
+        row: i8,
     ) -> bool {
         let coords = coords_for_placement(piece, rot, col, row);
         for (x, y) in coords.iter() {
@@ -42,11 +40,11 @@ impl Board {
         true
     }
 
-    pub fn get(&self, x: u8, y: u8) -> Occupancy {
+    pub fn get(&self, x: i8, y: i8) -> Occupancy {
         self.occupancies[x as usize + y as usize * DIM]
     }
 
-    fn set(&mut self, x: u8, y: u8, value: Occupancy) {
+    fn set(&mut self, x: i8, y: i8, value: Occupancy) {
         self.occupancies[x as usize + y as usize * DIM] = value;
     }
 }
@@ -70,10 +68,10 @@ impl ToString for Board {
 fn coords_for_placement(
     piece: Piece,
     rot: Rotation,
-    col: u8,
-    row: u8,
-) -> Vec<(u8, u8)> {
-    piece.offsets(rot).iter().map(|(x, y)| (col + x, row + y)).collect()
+    col: i8,
+    row: i8,
+) -> Vec<(i8, i8)> {
+    piece.offsets(rot).offsets.iter().map(|(x, y)| (col + x, row + y)).collect()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -83,6 +81,18 @@ pub enum Occupancy {
     Red,
     Blue,
     Yellow,
+}
+
+impl Occupancy {
+    pub fn color(self) -> Color {
+        match self {
+            Occupancy::Empty  => Color::rgba(0., 0., 0., 0.),
+            Occupancy::Green  => Color::hex("0cca4a").unwrap(),
+            Occupancy::Red    => Color::hex("fb3640").unwrap(),
+            Occupancy::Blue   => Color::hex("2892d7").unwrap(),
+            Occupancy::Yellow => Color::hex("ffba49").unwrap(),
+        }
+    }
 }
 
 impl ToString for Occupancy {
@@ -105,9 +115,26 @@ pub enum Rotation {
     TwoSeventy,
 }
 
+impl Rotation {
+    pub fn next_clockwise(self) -> Rotation {
+        match self {
+            Rotation::Zero       => Rotation::TwoSeventy,
+            Rotation::Ninety     => Rotation::Zero,
+            Rotation::OneEighty  => Rotation::Ninety,
+            Rotation::TwoSeventy => Rotation::OneEighty,
+        }
+    }
+}
+
+pub struct PieceOffsets {
+    pub offsets: Vec<(i8, i8)>,
+    pub pivot: (i8, i8),
+}
+
 // https://en.wikipedia.org/wiki/Blokus#/media/File:Blokus_tiles.svg
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Piece {
     One,
     Two,
@@ -134,114 +161,116 @@ pub enum Piece {
 
 impl Piece {
     /// @return (x,y)
-    pub fn offsets(&self, rot: Rotation) -> Vec<(u8, u8)> {
+    pub fn offsets(&self, rot: Rotation) -> PieceOffsets {
         match self {
-            Piece::One => vec!((0, 0)),
+            Piece::One => piece!(
+                rot,
+                O
+            ),
             Piece::Two => piece!(
                 rot,
-                XX
+                OX
             ),
             Piece::ThreeI => piece!(
                 rot,
-                XXX
+                XOX
             ),
             Piece::ThreeL => piece!(
                 rot,
-                XX,
+                OX,
                 X_
             ),
             Piece::FourI => piece!(
                 rot,
-                XXXX,
+                XOXX,
             ),
             Piece::FourL => piece!(
                 rot,
-                XXX,
+                OXX,
                 X__,
             ),
             Piece::FourStairs => piece!(
                 rot,
-                XX_,
+                XO_,
                 _XX,
             ),
             Piece::FourSquare => piece!(
                 rot,
-                XX,
+                OX,
                 XX,
             ),
             Piece::FourT => piece!(
                 rot,
-                XXX,
+                XOX,
                 _X_,
             ),
             Piece::FiveF => piece!(
                 rot,
                 X__,
-                XXX,
+                XOX,
                 _X_,
             ),
             Piece::FiveI => piece!(
                 rot,
-                XXXXX,
+                XXOXX,
             ),
             Piece::FiveL => piece!(
                 rot,
-                XXXX,
+                OXXX,
                 X___,
             ),
             Piece::FiveN => piece!(
                 rot,
-                XXX_,
+                XXO_,
                 __XX,
             ),
             Piece::FiveP => piece!(
                 rot,
-                XXX,
+                XOX,
                 _XX,
             ),
             Piece::FiveT => piece!(
                 rot,
                 XXX,
-                _X_,
+                _O_,
                 _X_,
             ),
             Piece::FiveU => piece!(
                 rot,
-                XXX,
+                XOX,
                 X_X,
             ),
             Piece::FiveV => piece!(
                 rot,
-                XXX,
+                OXX,
                 X__,
                 X__,
             ),
             Piece::FiveW => piece!(
                 rot,
                 XX_,
-                _XX,
+                _OX,
                 __X,
             ),
             Piece::FiveX => piece!(
                 rot,
                 _X_,
-                XXX,
+                XOX,
                 _X_,
             ),
             Piece::FiveY => piece!(
                 rot,
                 _X,
-                XX,
+                XO,
                 _X,
                 _X,
             ),
             Piece::FiveZ => piece!(
                 rot,
                 XX_,
-                _X_,
+                _O_,
                 _XX
             ),
-            _ => todo!()
         }
     }
 }
@@ -259,5 +288,3 @@ G.G.......
 ........R.
 ........RR
 */
-
-use std::{iter::Map, collections::HashMap};

@@ -1,6 +1,6 @@
 use std::mem::transmute;
 
-use bevy::{prelude::{Entity, Transform}, math::Vec2};
+use bevy::{prelude::Transform, math::Vec2};
 
 use crate::game::{Piece, Occupancy, Rotation};
 
@@ -58,6 +58,10 @@ impl UiState {
             Occupancy::Blue   => Occupancy::Yellow,
             Occupancy::Yellow => Occupancy::Green,
         };
+    }
+
+    pub fn next_selected_rotation(&mut self) {
+        self.selected_rotation = self.selected_rotation.next_clockwise();
     }
 
     pub fn tile_transform(&self, mouse: Vec2, x: i8, y: i8, z: f32) -> Transform {

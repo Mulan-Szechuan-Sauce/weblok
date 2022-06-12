@@ -7,8 +7,6 @@ use game::*;
 mod ui_state;
 use ui_state::*;
 
-use weblock_codegen::piece;
-
 #[derive(Component)]
 struct UnplacedPiece(i8, i8);
 
@@ -21,10 +19,11 @@ fn close_on_esc(key_input: Res<Input<KeyCode>>, mut exit: EventWriter<AppExit>) 
 fn place_piece_system(
     mut cursor_evr: EventReader<CursorMoved>,
     mut query: Query<(&mut Transform, &UnplacedPiece), With<UnplacedPiece>>,
-    mut ui_state: ResMut<UiState>,
+    ui_state: Res<UiState>,
 ) {
     for ev in cursor_evr.iter() {
         for (mut transform, UnplacedPiece(x, y)) in query.iter_mut() {
+            // FIXME: Offset based on pivot
             *transform = ui_state.tile_transform(ev.position, *x, *y, 1.);
         }
     }
@@ -50,12 +49,17 @@ fn spawn_piece(commands: &mut Commands, ui_state: &UiState, windows: &Windows) {
         return;
     };
 
-    for (x, y) in ui_state.selected_piece.offsets(ui_state.selected_rotation) {
+    let PieceOffsets { offsets, pivot: (pivot_x, pivot_y) } =
+        ui_state.selected_piece.offsets(ui_state.selected_rotation);
+
+    for (x, y) in offsets {
+        let [h, s, l, _] = ui_state.selected_occupancy.color().as_hlsa_f32();
+
         commands
             .spawn_bundle(SpriteBundle {
-                transform: ui_state.tile_transform(mouse, x as i8, y as i8, 1.),
+                transform: ui_state.tile_transform(mouse, x - pivot_x, y - pivot_y, 1.),
                 sprite: Sprite {
-                    color: Color::SEA_GREEN,
+                    color: Color::hsla(h, s, l * 1.3, 0.7),
                     custom_size: Some(Vec2::new(ui_state.tile_size, ui_state.tile_size)),
                     ..Default::default()
                 },
@@ -77,6 +81,10 @@ fn pizz_system(
         ui_state.next_selected_occupancy();
         replace_selected_piece(&mut commands, &ui_state, unplaced_entities.iter(), &windows);
     }
+    if key_input.just_released(KeyCode::R) {
+        ui_state.next_selected_rotation();
+        replace_selected_piece(&mut commands, &ui_state, unplaced_entities.iter(), &windows);
+    }
 
     for ev in event_reader.iter() {
         let increment = ev.y as i64;
@@ -90,8 +98,8 @@ fn pizz_system(
     }
 }
 
-fn setup(asset_server: Res<AssetServer>, mut commands: Commands, windows: Res<Windows>) {
-    let mut camera = OrthographicCameraBundle::new_2d();
+fn setup(mut commands: Commands, windows: Res<Windows>) {
+    let camera = OrthographicCameraBundle::new_2d();
     commands.spawn_bundle(camera);
 
     let mut board = Board::new();
@@ -101,22 +109,15 @@ fn setup(asset_server: Res<AssetServer>, mut commands: Commands, windows: Res<Wi
     // board.place(Occupancy::Blue, Piece::FiveW, Rotation::Zero, 13, 13);
     // board.place(Occupancy::Yellow, Piece::FiveU, Rotation::Ninety, 0, 7);
 
-    let mut ui_state = UiState::new();
+    let ui_state = UiState::new();
     for y in 0..DIM {
         for x in 0..DIM {
-            let color = match board.get(x as u8, y as u8) {
-                Occupancy::Empty => Color::rgb(1., 1., 1.),
-                Occupancy::Green => Color::rgb(0., 1., 0.),
-                Occupancy::Red => Color::rgb(1., 0., 0.),
-                Occupancy::Blue => Color::rgb(0., 0., 1.),
-                Occupancy::Yellow => Color::rgb(1., 1., 0.),
+            let color = match board.get(x as i8, y as i8) {
+                Occupancy::Empty => Color::DARK_GRAY,
+                other => other.color(),
             };
             commands.spawn_bundle(SpriteBundle {
-                transform: Transform::from_xyz(
-                    x as f32 * 25. - 250.,
-                    y as f32 * -25. + 250.,
-                    1.
-                ),
+                transform: Transform::from_xyz(x as f32 * 25. - 250., y as f32 * -25. + 250., 1.),
                 sprite: Sprite {
                     color,
                     custom_size: Some(Vec2::new(ui_state.tile_size, ui_state.tile_size)),
