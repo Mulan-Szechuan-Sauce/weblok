@@ -21,10 +21,12 @@ fn place_piece_system(
     mut query: Query<(&mut Transform, &UnplacedPiece), With<UnplacedPiece>>,
     ui_state: Res<UiState>,
 ) {
+    let PieceOffsets { pivot, .. } =
+        ui_state.selected_piece.offsets(ui_state.selected_rotation);
+
     for ev in cursor_evr.iter() {
         for (mut transform, UnplacedPiece(x, y)) in query.iter_mut() {
-            // FIXME: Offset based on pivot
-            *transform = ui_state.tile_transform(ev.position, *x, *y, 1.);
+            *transform = ui_state.tile_transform(ev.position, *x, *y, 1., pivot);
         }
     }
 }
@@ -49,7 +51,7 @@ fn spawn_piece(commands: &mut Commands, ui_state: &UiState, windows: &Windows) {
         return;
     };
 
-    let PieceOffsets { offsets, pivot: (pivot_x, pivot_y) } =
+    let PieceOffsets { offsets, pivot } =
         ui_state.selected_piece.offsets(ui_state.selected_rotation);
 
     for (x, y) in offsets {
@@ -57,7 +59,7 @@ fn spawn_piece(commands: &mut Commands, ui_state: &UiState, windows: &Windows) {
 
         commands
             .spawn_bundle(SpriteBundle {
-                transform: ui_state.tile_transform(mouse, x - pivot_x, y - pivot_y, 1.),
+                transform: ui_state.tile_transform(mouse, x, y, 1., pivot),
                 sprite: Sprite {
                     color: Color::hsla(h, s, l * 1.3, 0.7),
                     custom_size: Some(Vec2::new(ui_state.tile_size, ui_state.tile_size)),

@@ -64,14 +64,21 @@ impl UiState {
         self.selected_rotation = self.selected_rotation.next_clockwise();
     }
 
-    pub fn tile_transform(&self, mouse: Vec2, x: i8, y: i8, z: f32) -> Transform {
+    pub fn tile_transform(
+        &self,
+        mouse: Vec2,
+        x: i8,
+        y: i8,
+        z: f32,
+        (pivot_x, pivot_y): (i8, i8)
+    ) -> Transform {
         Transform::from_xyz(
             mouse.x
-                + x as f32 * (self.tile_size + self.tile_padding)
+                + (x - pivot_x) as f32 * (self.tile_size + self.tile_padding)
                 + self.board_offset_x,
             mouse.y
-                + y as f32 * (self.tile_size + self.tile_padding)
-                + self.board_offset_y,
+                + (y - pivot_y) as f32 * (self.tile_size + self.tile_padding)
+                + self.board_offset_y as f32,
             z,
         )
     }
