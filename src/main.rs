@@ -105,7 +105,11 @@ fn setup(mut commands: Commands, windows: Res<Windows>) {
     commands.spawn_bundle(camera);
 
     let mut board = Board::new();
-    board.place(Occupancy::Green, Piece::FourL, Rotation::OneEighty, 0, 0);
+    board.place(Occupancy::Green, Piece::FiveU, Rotation::OneEighty, 0, 0);
+    board.place(Occupancy::Blue, Piece::One, Rotation::OneEighty, 4, 0);
+    board.print_placements(Occupancy::Green);
+    board.print_placements(Occupancy::Blue);
+    panic!();
     // board.place(Occupancy::Green, Piece::FiveU, Rotation::Zero, 0, 0);
     // board.place(Occupancy::Red, Piece::FiveU, Rotation::Zero, 10, 5);
     // board.place(Occupancy::Blue, Piece::FiveW, Rotation::Zero, 13, 13);
@@ -114,7 +118,7 @@ fn setup(mut commands: Commands, windows: Res<Windows>) {
     let ui_state = UiState::new();
     for y in 0..DIM {
         for x in 0..DIM {
-            let color = match board.get(x as i8, y as i8) {
+            let color = match board.occupancies.get(x as i8, y as i8) {
                 Occupancy::Empty => Color::DARK_GRAY,
                 other => other.color(),
             };
