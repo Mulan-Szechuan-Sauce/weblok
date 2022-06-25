@@ -77,7 +77,7 @@ impl UiState {
                 + (x - pivot_x) as f32 * (self.tile_size + self.tile_padding)
                 + self.board_offset_x,
             mouse.y
-                + (y - pivot_y) as f32 * (self.tile_size + self.tile_padding)
+                + (pivot_y - y) as f32 * (self.tile_size + self.tile_padding)
                 + self.board_offset_y as f32,
             z,
         )

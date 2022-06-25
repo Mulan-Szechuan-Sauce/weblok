@@ -1,4 +1,6 @@
 #![feature(variant_count)]
+#![feature(generic_const_exprs)]
+
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, window::PresentMode};
 
@@ -21,13 +23,33 @@ fn place_piece_system(
     mut query: Query<(&mut Transform, &UnplacedPiece), With<UnplacedPiece>>,
     ui_state: Res<UiState>,
     windows: Res<Windows>,
+    mut board: ResMut<Board>,
 ) {
     let (_, win_height) = get_window_dims(&windows);
 
-    let PieceOffsets { pivot, .. } = ui_state.selected_piece.offsets(ui_state.selected_rotation);
+    let piece_offsets = ui_state.selected_piece.offsets(ui_state.selected_rotation);
+    let pivot = piece_offsets.pivot;
 
     for ev in cursor_evr.iter() {
-        let place_pos = calculate_place_pos(&ui_state, ev.position, win_height);
+        let (mouse_board_coords, snap_place_pos) =
+            snap_piece_if_in_grid(&ui_state, ev.position, win_height);
+
+        let place_pos = match mouse_board_coords {
+            Some((col, row)) => {
+                let coords = coords_for_placement(
+                    ui_state.selected_piece,
+                    ui_state.selected_rotation,
+                    col - pivot.0,
+                    row - pivot.1,
+                );
+                if board.is_placement_valid(ui_state.selected_occupancy, &coords) {
+                    snap_place_pos
+                } else {
+                    ev.position
+                }
+            }
+            _ => ev.position
+        };
 
         for (mut transform, UnplacedPiece(x, y)) in query.iter_mut() {
             *transform = ui_state.tile_transform(place_pos, *x, *y, 1., pivot);
@@ -35,11 +57,12 @@ fn place_piece_system(
     }
 }
 
-fn calculate_place_pos(
+/// Returns (board_coords, adjusted/snapped_position)
+fn snap_piece_if_in_grid(
     ui_state: &UiState,
     ev_position: Vec2,
     win_height: f32,
-) -> Vec2 {
+) -> (Option<(i8, i8)>, Vec2) {
     let magic_size = ui_state.tile_size + ui_state.tile_padding;
     let snap_dist = 0.2;
 
@@ -48,18 +71,22 @@ fn calculate_place_pos(
         (win_height - ev_position.y + ui_state.board_offset_y / 2.0) / magic_size,
     );
 
-    if possy.x >= 0.0 && possy.x < 20.0 && possy.y >= 0.0 && possy.y < 20.0 {
-        let round_x = possy.x.round();
-        let round_y = possy.y.round();
-
+    let round_x = possy.x.round();
+    let round_y = possy.y.round();
+    if round_x >= 0.0 && round_x < 20.0 && round_y >= 0.0 && round_y < 20.0 {
         if (possy.x - round_x).abs() <= snap_dist && (possy.y - round_y).abs() <= snap_dist {
-            return Vec2::new(
-                (-ui_state.board_offset_x / 2.0) + round_x * magic_size,
-                (win_height + ui_state.board_offset_y / 2.0) - round_y * magic_size,
+            let coords = (round_x as i8, round_y as i8);
+
+            return (
+                Some(coords),
+                Vec2::new(
+                    (-ui_state.board_offset_x / 2.0) + round_x * magic_size,
+                    (win_height + ui_state.board_offset_y / 2.0) - round_y * magic_size,
+                ),
             );
         }
     }
-    ev_position
+    (None, ev_position)
 }
 
 fn get_window_dims(windows: &Windows) -> (f32, f32) {
@@ -142,13 +169,7 @@ fn setup(mut commands: Commands, windows: Res<Windows>) {
 
     let mut board = Board::new();
     board.place(Occupancy::Green, Piece::FiveU, Rotation::OneEighty, 0, 0);
-    board.place(Occupancy::Blue, Piece::One, Rotation::OneEighty, 4, 0);
-    board.print_placements(Occupancy::Green);
-    board.print_placements(Occupancy::Blue);
-    // board.place(Occupancy::Green, Piece::FiveU, Rotation::Zero, 0, 0);
-    // board.place(Occupancy::Red, Piece::FiveU, Rotation::Zero, 10, 5);
-    // board.place(Occupancy::Blue, Piece::FiveW, Rotation::Zero, 13, 13);
-    // board.place(Occupancy::Yellow, Piece::FiveU, Rotation::Ninety, 0, 7);
+    board.place(Occupancy::Green, Piece::One, Rotation::OneEighty, 3, 2);
 
     let ui_state = UiState::new();
     for y in 0..DIM {
@@ -171,6 +192,7 @@ fn setup(mut commands: Commands, windows: Res<Windows>) {
 
     spawn_piece(&mut commands, &ui_state, &windows);
 
+    commands.insert_resource(board);
     commands.insert_resource(ui_state);
 }
 

@@ -7,23 +7,15 @@ use self::grid::*;
 
 pub const DIM: usize = 20;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Board {
-    pub occupancies: Grid<Occupancy>,
-    pub placements_green: Grid<Validity>,
-    pub placements_red: Grid<Validity>,
-    pub placements_blue: Grid<Validity>,
-    pub placements_yellow: Grid<Validity>,
+    pub occupancies: Grid<Occupancy, DIM>,
 }
 
 impl Board {
     pub fn new() -> Board {
         Board {
             occupancies: Grid::new(),
-            placements_green: Grid::new(),
-            placements_red: Grid::new(),
-            placements_blue: Grid::new(),
-            placements_yellow: Grid::new(),
         }
     }
 
@@ -37,6 +29,21 @@ impl Board {
         row: i8,
     ) -> bool {
         let coords = coords_for_placement(piece, rot, col, row);
+
+        if self.is_placement_valid(occupancy, &coords) {
+            for (x, y) in coords {
+                self.occupancies.set(x, y, occupancy);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    // Returns false if the placement is invalid
+    pub fn is_placement_valid(&mut self, occupancy: Occupancy, coords: &Vec<(i8, i8)>) -> bool {
+        let mut has_anchor = false;
+
         for (x, y) in coords.iter() {
             if *x as usize >= DIM || *y as usize >= DIM {
                 return false;
@@ -44,11 +51,14 @@ impl Board {
             if self.occupancies.get(*x, *y) != Occupancy::Empty {
                 return false;
             }
+            if self.touching_sides(occupancy, *x, *y) {
+                return false;
+            }
+            if self.touching_tips(occupancy, *x, *y) {
+                has_anchor = true;
+            }
         }
-        for (x, y) in coords {
-            self.occupancies.set(x, y, occupancy);
-        }
-        true
+        has_anchor
     }
 
     /// Print the valid, invalid, and docking placements for the given occupancy
@@ -70,7 +80,7 @@ impl Board {
         }
     }
 
-    pub fn vomit_placements(&self, occupancy: Occupancy, placements: &mut Grid<Validity>) {
+    pub fn vomit_placements(&self, occupancy: Occupancy, placements: &mut Grid<Validity, DIM>) {
         for y in 0..DIM as i8 {
             for x in 0..DIM as i8 {
                 if self.occupancies.get(x, y) != Occupancy::Empty
@@ -97,6 +107,10 @@ impl Board {
 
     /// Checks if the corners are touching the same occupancy
     fn touching_tips(&self, occupancy: Occupancy, x: i8, y: i8) -> bool {
+        if (x == 0 || x == DIM as i8 - 1) && (y == 0 || y == DIM as i8 - 1) {
+            return true;
+        }
+
         self.occupancies.get_opt(x - 1, y - 1) == Some(occupancy)
             || self.occupancies.get_opt(x - 1, y + 1) == Some(occupancy)
             || self.occupancies.get_opt(x + 1, y - 1) == Some(occupancy)
@@ -107,7 +121,7 @@ impl Board {
 /// row and col refer to the upper left corner of the piece bounding box
 /// So the row and col of a piece will relatively changed based on rotation
 /// @return (x,y)
-fn coords_for_placement(piece: Piece, rot: Rotation, col: i8, row: i8) -> Vec<(i8, i8)> {
+pub fn coords_for_placement(piece: Piece, rot: Rotation, col: i8, row: i8) -> Vec<(i8, i8)> {
     piece
         .offsets(rot)
         .offsets
@@ -188,9 +202,25 @@ impl Rotation {
     }
 }
 
+#[derive(Debug)]
 pub struct PieceOffsets {
     pub offsets: Vec<(i8, i8)>,
     pub pivot: (i8, i8),
+}
+
+impl PieceOffsets {
+    pub fn print_repr(&self) {
+        let mut grid = Grid::<char, 5>::new();
+        for x in 0..5 {
+            for y in 0..5 {
+                grid.set(x, y, '-');
+            }
+        }
+        for (x, y) in &self.offsets {
+            grid.set(*x, *y, 'X');
+        }
+        println!("{}", grid.to_string());
+    }
 }
 
 // https://en.wikipedia.org/wiki/Blokus#/media/File:Blokus_tiles.svg
@@ -234,7 +264,10 @@ impl Piece {
             Piece::FourStairs => piece!(rot, XO_, _XX,),
             Piece::FourSquare => piece!(rot, OX, XX,),
             Piece::FourT => piece!(rot, XOX, _X_,),
-            Piece::FiveF => piece!(rot, X__, XOX, _X_,),
+            Piece::FiveF => piece!(rot,
+                                   X__,
+                                   XOX,
+                                   _X_,),
             Piece::FiveI => piece!(rot, XXOXX,),
             Piece::FiveL => piece!(rot, OXXX, X___,),
             Piece::FiveN => piece!(rot, XXO_, __XX,),
@@ -249,16 +282,3 @@ impl Piece {
         }
     }
 }
-
-/*  GG
-GGG.......
-G.G.......
-.G.GBBBBB.
-.G.G......
-..........
-..........
-..........
-........R.
-........R.
-........RR
-*/
