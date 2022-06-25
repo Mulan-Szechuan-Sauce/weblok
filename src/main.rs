@@ -20,15 +20,51 @@ fn place_piece_system(
     mut cursor_evr: EventReader<CursorMoved>,
     mut query: Query<(&mut Transform, &UnplacedPiece), With<UnplacedPiece>>,
     ui_state: Res<UiState>,
+    windows: Res<Windows>,
 ) {
-    let PieceOffsets { pivot, .. } =
-        ui_state.selected_piece.offsets(ui_state.selected_rotation);
+    let (_, win_height) = get_window_dims(&windows);
+
+    let PieceOffsets { pivot, .. } = ui_state.selected_piece.offsets(ui_state.selected_rotation);
 
     for ev in cursor_evr.iter() {
+        let place_pos = calculate_place_pos(&ui_state, ev.position, win_height);
+
         for (mut transform, UnplacedPiece(x, y)) in query.iter_mut() {
-            *transform = ui_state.tile_transform(ev.position, *x, *y, 1., pivot);
+            *transform = ui_state.tile_transform(place_pos, *x, *y, 1., pivot);
         }
     }
+}
+
+fn calculate_place_pos(
+    ui_state: &UiState,
+    ev_position: Vec2,
+    win_height: f32,
+) -> Vec2 {
+    let magic_size = ui_state.tile_size + ui_state.tile_padding;
+    let snap_dist = 0.2;
+
+    let possy = Vec2::new(
+        (ev_position.x + ui_state.board_offset_x / 2.0) / magic_size,
+        (win_height - ev_position.y + ui_state.board_offset_y / 2.0) / magic_size,
+    );
+
+    if possy.x >= 0.0 && possy.x < 20.0 && possy.y >= 0.0 && possy.y < 20.0 {
+        let round_x = possy.x.round();
+        let round_y = possy.y.round();
+
+        if (possy.x - round_x).abs() <= snap_dist && (possy.y - round_y).abs() <= snap_dist {
+            return Vec2::new(
+                (-ui_state.board_offset_x / 2.0) + round_x * magic_size,
+                (win_height + ui_state.board_offset_y / 2.0) - round_y * magic_size,
+            );
+        }
+    }
+    ev_position
+}
+
+fn get_window_dims(windows: &Windows) -> (f32, f32) {
+    let window = windows.get_primary().unwrap();
+    (window.width(), window.height())
 }
 
 fn replace_selected_piece(
@@ -109,7 +145,6 @@ fn setup(mut commands: Commands, windows: Res<Windows>) {
     board.place(Occupancy::Blue, Piece::One, Rotation::OneEighty, 4, 0);
     board.print_placements(Occupancy::Green);
     board.print_placements(Occupancy::Blue);
-    panic!();
     // board.place(Occupancy::Green, Piece::FiveU, Rotation::Zero, 0, 0);
     // board.place(Occupancy::Red, Piece::FiveU, Rotation::Zero, 10, 5);
     // board.place(Occupancy::Blue, Piece::FiveW, Rotation::Zero, 13, 13);
@@ -149,8 +184,8 @@ fn main() {
             ..default()
         })
         .add_plugins(DefaultPlugins)
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        // .add_plugin(LogDiagnosticsPlugin::default())
+        // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(setup)
         .add_system(close_on_esc)
         .add_system(pizz_system)
