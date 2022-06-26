@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::mem::transmute;
 
 use bevy::{prelude::Transform, math::Vec2};
@@ -16,7 +15,6 @@ pub struct UiState {
     pub tile_size: f32,
     pub tile_padding: f32,
     pub mouse_board_coords: Option<(i8, i8)>,
-    inventories: HashMap<Occupancy, Vec<Piece>>,
 }
 
 impl UiState {
@@ -30,12 +28,6 @@ impl UiState {
             tile_size: 20.,
             tile_padding: 5.,
             mouse_board_coords: None,
-            inventories: HashMap::from_iter([
-                (Occupancy::Blue, Piece::all()),
-                (Occupancy::Green, Piece::all()),
-                (Occupancy::Red, Piece::all()),
-                (Occupancy::Yellow, Piece::all()),
-            ]),
         }
     }
 

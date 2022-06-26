@@ -1,5 +1,6 @@
-use bevy::prelude::Color;
 #[allow(dead_code)]
+use bevy::prelude::Color;
+use std::{collections::HashMap, ops::Index};
 use weblock_codegen::*;
 
 mod grid;
@@ -10,12 +11,19 @@ pub const DIM: usize = 20;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Board {
     pub occupancies: Grid<Occupancy, DIM>,
+    inventories: HashMap<Occupancy, Vec<Piece>>,
 }
 
 impl Board {
     pub fn new() -> Board {
         Board {
             occupancies: Grid::new(),
+            inventories: HashMap::from_iter([
+                (Occupancy::Blue, Piece::all()),
+                (Occupancy::Green, Piece::all()),
+                (Occupancy::Red, Piece::all()),
+                (Occupancy::Yellow, Piece::all()),
+            ]),
         }
     }
 
@@ -31,6 +39,17 @@ impl Board {
         let coords = coords_for_placement(piece, rot, col, row);
 
         if self.is_placement_valid(occupancy, &coords) {
+            let pieces = self
+                .inventories
+                .get_mut(&occupancy)
+                .expect("Got Occupancy::Empty");
+
+            let maybe_index = pieces.iter().position(|p| *p == piece);
+            if let Some(index) = maybe_index {
+                pieces.swap_remove(index);
+            } else {
+                return false;
+            }
             for (x, y) in coords {
                 self.occupancies.set(x, y, occupancy);
             }
