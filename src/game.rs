@@ -143,7 +143,7 @@ impl Default for Validity {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Occupancy {
     Empty,
     Green,
@@ -252,6 +252,33 @@ pub enum Piece {
 }
 
 impl Piece {
+    pub fn all() -> Vec<Piece> {
+        /* TODO: My eyes ... :'( */
+        vec![
+            Piece::One,
+            Piece::Two,
+            Piece::ThreeL,
+            Piece::ThreeI,
+            Piece::FourI,
+            Piece::FourL,
+            Piece::FourStairs,
+            Piece::FourSquare,
+            Piece::FourT,
+            Piece::FiveF,
+            Piece::FiveI,
+            Piece::FiveL,
+            Piece::FiveN,
+            Piece::FiveP,
+            Piece::FiveT,
+            Piece::FiveU,
+            Piece::FiveV,
+            Piece::FiveW,
+            Piece::FiveX,
+            Piece::FiveY,
+            Piece::FiveZ,
+        ]
+    }
+
     /// @return (x,y)
     pub fn offsets(&self, rot: Rotation) -> PieceOffsets {
         match self {
@@ -264,10 +291,7 @@ impl Piece {
             Piece::FourStairs => piece!(rot, XO_, _XX,),
             Piece::FourSquare => piece!(rot, OX, XX,),
             Piece::FourT => piece!(rot, XOX, _X_,),
-            Piece::FiveF => piece!(rot,
-                                   X__,
-                                   XOX,
-                                   _X_,),
+            Piece::FiveF => piece!(rot, X__, XOX, _X_,),
             Piece::FiveI => piece!(rot, XXOXX,),
             Piece::FiveL => piece!(rot, OXXX, X___,),
             Piece::FiveN => piece!(rot, XXO_, __XX,),
