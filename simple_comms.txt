@@ -1,0 +1,10 @@
+step one for the client:
+
+send "join 1234" # Joining room number 1234
+Server finds the room, or creates a new one
+if there are too many players, tell the client to go away
+otherwise, tell them they can come into the room, and give them a client ID
+
+step two for the client:
+every 10 seconds, send an hello message
+server distributes the message to all other clients, with the client ID prepended to the message

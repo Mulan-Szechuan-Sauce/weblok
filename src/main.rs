@@ -2,6 +2,7 @@
 #![feature(generic_const_exprs)]
 #![feature(let_chains)]
 
+/*
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, window::PresentMode};
 
@@ -9,6 +10,8 @@ mod game;
 use game::*;
 mod ui_state;
 use ui_state::*;
+mod log;
+use log::*;
 
 #[derive(Component)]
 struct UnplacedPiece(i8, i8);
@@ -38,12 +41,7 @@ fn place_piece_system(
 
         let place_pos = match mouse_board_coords {
             Some((col, row)) => {
-                let coords = coords_for_placement(
-                    ui_state.piece,
-                    ui_state.rotation,
-                    col,
-                    row,
-                );
+                let coords = coords_for_placement(ui_state.piece, ui_state.rotation, col, row);
                 if board.is_placement_valid(ui_state.occupancy, &coords) {
                     snap_place_pos
                 } else {
@@ -117,8 +115,7 @@ fn spawn_piece(commands: &mut Commands, ui_state: &UiState, windows: &Windows) {
         return;
     };
 
-    let PieceOffsets { offsets, pivot } =
-        ui_state.piece.offsets(ui_state.rotation);
+    let PieceOffsets { offsets, pivot } = ui_state.piece.offsets(ui_state.rotation);
 
     for (x, y) in offsets {
         let [h, s, l, _] = ui_state.occupancy.color().as_hlsa_f32();
@@ -225,7 +222,47 @@ fn spawn_tile(commands: &mut Commands, board: &mut Board, tile_size: f32, x: i8,
     });
 }
 
+*/
+use {
+    pharos::*, wasm_bindgen::UnwrapThrowExt, wasm_bindgen_futures::futures_0_3::spawn_local,
+    ws_stream_wasm::*,
+};
+
+mod log;
+use futures::{AsyncReadExt, AsyncWriteExt, SinkExt, StreamExt};
+use log::bevy_log;
+
 fn main() {
+    spawn_local(async {
+        let (mut ws, mut ws_stream) = WsMeta::connect("ws://127.0.0.1:6969", None)
+            .await
+            .expect_throw("assume the connection succeeds");
+        bevy_log("Connected to web socket!");
+
+        let mut events = ws
+            .observe(ObserveConfig::default())
+            .await
+            .expect_throw("observe");
+        bevy_log("observe! ... but not of the error variety");
+
+        ws_stream
+            .send(WsMessage::Text("yeet street".to_owned()))
+            .await
+            .expect("Wrote message");
+
+        match ws_stream.next().await.expect("Read message") {
+            WsMessage::Text(t) => bevy_log(&t),
+            WsMessage::Binary(_) => panic!("Binary recieved but I didn't expect it"),
+        }
+
+        ws.close().await;
+
+        // Note that since WsMeta::connect resolves to an opened connection, we don't see
+        // any Open events here.
+        assert!(events.next().await.unwrap_throw().is_closing());
+        assert!(events.next().await.unwrap_throw().is_closed());
+    });
+    /*
     App::new()
         .insert_resource(WindowDescriptor {
             title: String::from("weblok"),
@@ -242,4 +279,5 @@ fn main() {
         .add_system(pizz_system)
         .add_system(place_piece_system)
         .run();
+        */
 }

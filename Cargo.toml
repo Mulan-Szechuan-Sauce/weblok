@@ -8,8 +8,14 @@ edition = "2021"
 [workspace]
 members = [
   "weblock-codegen",
+  "weblock-server",
 ]
 
 [dependencies]
 weblock-codegen = { path = "./weblock-codegen" }
-bevy = { version = "0.7", feature = ["dynamic"] }
+# bevy = { version = "0.7", feature = ["dynamic"] }
+wasm-bindgen = { version = "0.2" }
+ws_stream_wasm = { version = "0.7" }
+wasm-bindgen-futures = { version = "0.3", features = ["futures_0_3"] }
+pharos = { version = "0.5" }
+futures = { version = "0.3" }
