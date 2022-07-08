@@ -1,0 +1,15 @@
+[package]
+name = "weblok-client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+weblok-codegen = { path = "../weblok-codegen" }
+# bevy = { version = "0.7", feature = ["dynamic"] }
+wasm-bindgen = { version = "0.2" }
+ws_stream_wasm = { version = "0.7" }
+wasm-bindgen-futures = { version = "0.3", features = ["futures_0_3"] }
+pharos = { version = "0.5" }
+futures = { version = "0.3" }

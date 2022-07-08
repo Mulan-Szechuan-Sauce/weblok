@@ -1,19 +1,33 @@
-use std::{collections::HashMap, env, io::Error, sync::Arc};
+use std::{env, io::Error};
 
-mod api;
-use api::*;
-
-use futures_util::{future, SinkExt, StreamExt, TryStreamExt};
+use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
 use tokio::{
     net::{TcpListener, TcpStream},
-    select,
-    sync::{
-        broadcast::{self, Receiver, Sender},
-        RwLock,
-    },
+    sync::broadcast::{self, Sender},
 };
 use tokio_tungstenite::tungstenite::Message;
+
+use std::{sync::Arc, collections::HashMap};
+use tokio::sync::RwLock;
+
+use weblok_common::*;
+
+pub(crate) struct WaitingRoom {
+    rooms: Arc<RwLock<HashMap<String, Room>>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct Room {
+    id: String,
+    players: Vec<String>,
+    tx: Sender<ChatMsg>,
+}
+
+pub(crate) struct ChatMsg {
+    username: String,
+    message: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -32,14 +46,14 @@ async fn main() -> Result<(), Error> {
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
-                tokio::spawn(accept_connection(stream, tx.clone(), tx.subscribe()));
+                tokio::spawn(accept_connection(stream, tx.clone()));
             }
             Err(err) => error!("{}", err),
         };
     }
 }
 
-async fn accept_connection(stream: TcpStream, tx: Sender<String>, mut rx: Receiver<String>) {
+async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) {
     let addr = stream
         .peer_addr()
         .expect("connected streams should have a peer address");
@@ -53,6 +67,19 @@ async fn accept_connection(stream: TcpStream, tx: Sender<String>, mut rx: Receiv
 
     let (mut write, mut read) = ws_stream.split();
 
+    let mut broadcast_listener = room_broadcaster.subscribe();
+
+    // Client sends message 
+    // -> Server intprets message and decides on response 
+    // -> Server response is pushed to channel
+    // -> All subscribers send the ServerMessage to their websocket
+    //
+    // example:
+    // Client sends chat message
+    // -> Server turns this into ServerMessage::ChatMessage
+    // -> Server writes ChatMessage to room broadcaster
+    // -> Subscribers take ServerMessage and send to their websocket
+
     loop {
         tokio::select! {
             next = read.next() => {
@@ -61,7 +88,7 @@ async fn accept_connection(stream: TcpStream, tx: Sender<String>, mut rx: Receiv
                         match bincode::deserialize::<ClientMessage>(&msg) {
                             Ok(des) => match des {
                                 ClientMessage::SendChatMessage(chat_msg) => {
-                                    tx.send(chat_msg).expect("Broadcast failed to send");
+                                    room_broadcaster.send(chat_msg).expect("Broadcast failed to send");
                                 },
                                 _ => todo!(),
                             },
@@ -79,7 +106,7 @@ async fn accept_connection(stream: TcpStream, tx: Sender<String>, mut rx: Receiv
                     },
                 }
             }
-            bc_msg = rx.recv() => {
+            bc_msg = broadcast_listener.recv() => {
                 println!("Somebody sent a message");
 
                 // TODO: ServerMessage, not client

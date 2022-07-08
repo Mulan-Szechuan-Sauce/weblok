@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 use bevy::prelude::Color;
 use std::{collections::HashMap, ops::Index};
-use weblock_codegen::*;
+use weblok_codegen::*;
 
 mod grid;
 use self::grid::*;
