@@ -65,6 +65,7 @@ async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) 
 
     info!("New WebSocket connection: {}", addr);
 
+    // wss://thing:8080?username=blah
     let (mut write, mut read) = ws_stream.split();
 
     let mut broadcast_listener = room_broadcaster.subscribe();

@@ -243,9 +243,12 @@ use {
 };
 
 static SERVER_URL: &'static str = "ws://127.0.0.1:6969";
+type Wss = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 mod log;
 use log::bevy_log;
+use tokio::{io::AsyncBufReadExt, net::TcpStream};
+use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use weblok_common::*;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -253,16 +256,46 @@ use weblok_common::*;
 async fn main() {
     let (mut ws_stream, _) = connect_async(SERVER_URL).await.expect("Failed to connect");
 
-    let content = bincode::serialize(&ClientMessage::SendChatMessage(
-        "I'm a little chat message".to_owned(),
-    ))
-    .expect("Poo");
+    let stdin = tokio::io::stdin();
+    let reader = tokio::io::BufReader::new(stdin);
+    // Take a stream of lines from this
+    let mut lines = reader.lines();
+
+    loop {
+        tokio::select! {
+            msg = read_server_message(&mut ws_stream) => {
+                dbg!("Server message");
+            },
+            input = lines.next_line() => {
+                match input {
+                    Ok(None)        => break,
+                    Ok(Some(other)) => match other {
+                        msg if msg == "/quit" => break,
+                        msg => send_chat_message(&mut ws_stream, msg).await,
+                    },
+                    Err(err) => panic!("{}", err),
+                };
+            },
+            // input = read_console() => {
+            //     dbg!(input);
+            // },
+        }
+    }
+
+    ws_stream.close(None).await.expect("Failed to close stream");
+}
+
+async fn send_chat_message(ws_stream: &mut Wss, message: String) {
+    let content = bincode::serialize(&ClientMessage::SendChatMessage(message))
+        .expect("Failed to serialize chat message");
 
     ws_stream
         .send(Message::Binary(content))
         .await
         .expect("Failed to write message");
+}
 
+async fn read_server_message(ws_stream: &mut Wss) {
     match ws_stream.next().await {
         Some(Ok(Message::Text(t))) => bevy_log(&t),
         Some(Ok(Message::Binary(t))) => match bincode::deserialize::<ServerMessage>(&t) {
@@ -281,8 +314,6 @@ async fn main() {
         _ => panic!("Oh no. Why am I here"),
         //Message::Binary(_) => panic!("Binary recieved but I didn't expect it"),
     };
-
-    ws_stream.close(None).await.expect("Failed to close stream");
 }
 
 #[cfg(target_arch = "wasm32")]
