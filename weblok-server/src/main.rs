@@ -8,7 +8,7 @@ use tokio::{
 };
 use tokio_tungstenite::tungstenite::Message;
 
-use std::{sync::Arc, collections::HashMap};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
 use weblok_common::*;
@@ -69,8 +69,8 @@ async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) 
 
     let mut broadcast_listener = room_broadcaster.subscribe();
 
-    // Client sends message 
-    // -> Server intprets message and decides on response 
+    // Client sends message
+    // -> Server intprets message and decides on response
     // -> Server response is pushed to channel
     // -> All subscribers send the ServerMessage to their websocket
     //
@@ -95,23 +95,29 @@ async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) 
                             _ => todo!(),
                         }
                     },
+                    Some(Ok(Message::Close(None))) => {
+                        println!("OUR client gracefully disconnected");
+                        return;
+                    },
                     Some(Ok(_)) => {
                         println!("OUR client sent a non-binary message");
                     },
                     Some(Err(e)) => {
                         println!("OUR client errored: {}", e);
                     },
-                    _ => {
-                        println!("OUR client gracefully disconnected");
+                    None => {
+                        panic!("wtf happened")
                     },
                 }
             }
             bc_msg = broadcast_listener.recv() => {
                 println!("Somebody sent a message");
 
-                // TODO: ServerMessage, not client
                 let content = bincode::serialize(
-                    &ClientMessage::SendChatMessage(bc_msg.expect("Recieving message")))
+                    &ServerMessage::BroadcastChatMessage(
+                        0,
+                        "peelimirks".to_owned(),
+                        bc_msg.expect("Recieving message")))
                     .expect("Poo");
 
                 write.send(Message::Binary(content))

@@ -2,6 +2,8 @@
 #![feature(generic_const_exprs)]
 #![feature(let_chains)]
 
+mod comms;
+
 /*
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, window::PresentMode};
@@ -223,18 +225,70 @@ fn spawn_tile(commands: &mut Commands, board: &mut Board, tile_size: f32, x: i8,
 }
 
 */
+
+#[cfg(target_arch = "wasm32")]
 use {
-    pharos::*, wasm_bindgen::UnwrapThrowExt, wasm_bindgen_futures::futures_0_3::spawn_local,
+    futures::{AsyncReadExt, AsyncWriteExt, SinkExt, StreamExt},
+    pharos::*,
+    wasm_bindgen::UnwrapThrowExt,
+    wasm_bindgen_futures::futures_0_3::spawn_local,
     ws_stream_wasm::*,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    futures_util::{SinkExt, StreamExt},
+    tokio::sync::broadcast::{self, Sender},
+    tokio_tungstenite::connect_async,
+    tokio_tungstenite::tungstenite::Message,
+};
+
+static SERVER_URL: &'static str = "ws://127.0.0.1:6969";
 
 mod log;
-use futures::{AsyncReadExt, AsyncWriteExt, SinkExt, StreamExt};
 use log::bevy_log;
+use weblok_common::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+#[tokio::main]
+async fn main() {
+    let (mut ws_stream, _) = connect_async(SERVER_URL).await.expect("Failed to connect");
+
+    let content = bincode::serialize(&ClientMessage::SendChatMessage(
+        "I'm a little chat message".to_owned(),
+    ))
+    .expect("Poo");
+
+    ws_stream
+        .send(Message::Binary(content))
+        .await
+        .expect("Failed to write message");
+
+    match ws_stream.next().await {
+        Some(Ok(Message::Text(t))) => bevy_log(&t),
+        Some(Ok(Message::Binary(t))) => match bincode::deserialize::<ServerMessage>(&t) {
+            Ok(server_msg) => {
+                dbg!(server_msg);
+            },
+            Err(e) => {
+                dbg!(e);
+                panic!("Get owned");
+            },
+        },
+        Some(Err(e)) => {
+            dbg!(e);
+            return;
+        }
+        _ => panic!("Oh no. Why am I here"),
+        //Message::Binary(_) => panic!("Binary recieved but I didn't expect it"),
+    };
+
+    ws_stream.close(None).await.expect("Failed to close stream");
+}
+
+#[cfg(target_arch = "wasm32")]
 fn main() {
     spawn_local(async {
-        let (mut ws, mut ws_stream) = WsMeta::connect("ws://127.0.0.1:6969", None)
+        let (mut ws, mut ws_stream) = WsMeta::connect(SERVER_URL, None)
             .await
             .expect_throw("assume the connection succeeds");
         bevy_log("Connected to web socket!");
@@ -248,7 +302,7 @@ fn main() {
         ws_stream
             .send(WsMessage::Text("yeet street".to_owned()))
             .await
-            .expect("Wrote message");
+            .expect("Failed to write message");
 
         match ws_stream.next().await.expect("Read message") {
             WsMessage::Text(t) => bevy_log(&t),

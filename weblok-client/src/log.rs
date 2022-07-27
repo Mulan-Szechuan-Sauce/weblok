@@ -1,3 +1,4 @@
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 // Taken from https://rustwasm.github.io/wasm-bindgen/examples/console-log.html
