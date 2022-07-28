@@ -261,6 +261,8 @@ async fn main() {
     // Take a stream of lines from this
     let mut lines = reader.lines();
 
+    set_username(&mut ws_stream, utils::generate_username()).await;
+
     loop {
         tokio::select! {
             msg = read_server_message(&mut ws_stream) => {
@@ -288,6 +290,16 @@ async fn main() {
 async fn send_chat_message(ws_stream: &mut Wss, message: String) {
     let content = bincode::serialize(&ClientMessage::SendChatMessage(message))
         .expect("Failed to serialize chat message");
+
+    ws_stream
+        .send(Message::Binary(content))
+        .await
+        .expect("Failed to write message");
+}
+
+async fn set_username(ws_stream: &mut Wss, username: String) {
+    let content = bincode::serialize(&ClientMessage::SetUsername(username))
+        .expect("Failed to serialize set username request");
 
     ws_stream
         .send(Message::Binary(content))

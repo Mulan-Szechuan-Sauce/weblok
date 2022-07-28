@@ -1,4 +1,4 @@
-use std::{env, io::Error};
+use std::{env, io::Error, time::SystemTime};
 
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
@@ -81,6 +81,8 @@ async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) 
     // -> Server writes ChatMessage to room broadcaster
     // -> Subscribers take ServerMessage and send to their websocket
 
+    let mut username = utils::generate_username();
+
     loop {
         tokio::select! {
             next = read.next() => {
@@ -90,6 +92,9 @@ async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) 
                             Ok(des) => match des {
                                 ClientMessage::SendChatMessage(chat_msg) => {
                                     room_broadcaster.send(chat_msg).expect("Broadcast failed to send");
+                                },
+                                ClientMessage::SetUsername(new_username) => {
+                                    username = new_username;
                                 },
                                 _ => todo!(),
                             },
@@ -116,8 +121,8 @@ async fn accept_connection(stream: TcpStream, room_broadcaster: Sender<String>) 
 
                 let content = bincode::serialize(
                     &ServerMessage::BroadcastChatMessage(
-                        0,
-                        "peelimirks".to_owned(),
+                        SystemTime::now(),
+                        username.clone(),
                         bc_msg.expect("Recieving message")))
                     .expect("Poo");
 
